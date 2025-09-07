@@ -1,10 +1,6 @@
-FROM apache/airflow:2.7.1
+FROM apache/airflow:3.0.6
 
-USER root
-RUN apt-get update && apt-get install -y build-essential
+RUN echo 'remove cache 07/09/25'
+ADD requirements.txt .
 
-USER airflow
-
-COPY requirements.txt /
-
-RUN pip install --no-cache-dir -r /requirements.txt
+RUN pip install apache-airflow==${AIRFLOW_VERSION} -r requirements.txt
