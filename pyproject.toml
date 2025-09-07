@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "apache-airflow==3.0.6",
     "cryptography>=45.0.7",
     "psycopg2-binary>=2.9.10",
 ]
