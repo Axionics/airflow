@@ -323,7 +323,7 @@ dag_bundle_config_list = [
       }
     ]
 
-refresh_interval = 300
+refresh_interval = 30
 parsing_processes = 2
 file_parsing_sort_mode = modified_time
 max_callbacks_per_loop = 20
