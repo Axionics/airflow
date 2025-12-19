@@ -79,10 +79,10 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
-  depends_on:
-    &airflow-common-depends-on
-    redis:
-      condition: service_healthy
+  # depends_on:
+  #   &airflow-common-depends-on
+  #   redis:
+  #     condition: service_healthy
   networks:
     - stack_net
 
@@ -116,7 +116,7 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      <<: *airflow-common-depends-on
+      # <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
 
@@ -131,7 +131,7 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      <<: *airflow-common-depends-on
+      # <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
 
@@ -146,7 +146,7 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      <<: *airflow-common-depends-on
+      # <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
 
@@ -186,7 +186,7 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      <<: *airflow-common-depends-on
+      # <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
 
@@ -294,8 +294,8 @@ services:
       - bash
       - -c
       - airflow
-    depends_on:
-      <<: *airflow-common-depends-on
+    # depends_on:
+      # <<: *airflow-common-depends-on
 
   # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
   # or by explicitly targeted on the command line e.g. docker-compose up flower.
@@ -315,7 +315,7 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      <<: *airflow-common-depends-on
+      # <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
 
