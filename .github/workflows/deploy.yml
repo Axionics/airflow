@@ -15,16 +15,33 @@ jobs:
 
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@master
+        env:
+          VPS_SSH_PASSPHRASE: ${{ secrets.VPS_SSH_PASSPHRASE }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          # passphrase: ${{ secrets.VPS_SSH_PASSPHRASE }}
           port: 22
+          envs: VPS_SSH_PASSPHRASE
 
           script: |
             echo "Conectado ao servidor. Iniciando deploy..."
+
+            echo "Adicionando chave SSH ao agente..."
+            eval $(ssh-agent -s)
+            echo "echo \$VPS_SSH_PASSPHRASE" > ~/.ssh_askpass_temp
+            chmod +x ~/.ssh_askpass_temp
+            export SSH_ASKPASS=~/.ssh_askpass_temp
+            export DISPLAY=:0
+            setsid ssh-add ~/.ssh/id_ed25519
+
+            echo "Atualizando o projeto..."
             cd ${{ secrets.VPS_TARGET_PATH }}
             echo "Executando git pull na pasta $(pwd)..."
             git pull origin main
+
+            echo "Encerrando o agente e removendo arquivos temporários..."
+            ssh-agent -k
+            rm ~/.ssh_askpass_temp
+
             echo "Deploy finalizado com sucesso!"
