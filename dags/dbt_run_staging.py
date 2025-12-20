@@ -21,7 +21,6 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.models import Variable
-from airflow.utils.dates import days_ago
 import logging
 
 # Configurações padrão da DAG
@@ -62,7 +61,7 @@ with DAG(
     default_args=default_args,
     description='Executa modelos dbt com tag "stg" (staging layer)',
     schedule_interval='*/5 * * * *',  # A cada 5 minutos
-    start_date=days_ago(1),
+    start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['dbt', 'staging', 'stg'],
     max_active_runs=1,  # Apenas uma execução por vez
