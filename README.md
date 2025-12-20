@@ -62,9 +62,18 @@ Configure pela interface web do Airflow:
 
 ### 2. Projeto dbt
 
-O projeto dbt está montado em `/opt/dbt` dentro do container do Airflow através do volume:
-- **Local**: `../axionics-dbt`
-- **Container**: `/opt/dbt`
+O projeto dbt está montado em `/opt/dbt` dentro do container do Airflow através do volume.
+
+**Configuração por Ambiente:**
+
+- **Local (Desenvolvimento)**:
+  - Defina `DBT_PROJECT_PATH=../axionics-dbt` no arquivo `.env`
+  - O volume será: `../axionics-dbt:/opt/dbt`
+
+- **Produção (VPS)**:
+  - **NÃO defina** `DBT_PROJECT_PATH` no arquivo `.env` (ou comente a linha)
+  - O volume usará o default: `/opt/dbt:/opt/dbt`
+  - Certifique-se que o projeto dbt está em `/opt/dbt` na VPS
 
 O perfil dbt (`profiles.yml`) está em `/opt/dbt/profiles`.
 
