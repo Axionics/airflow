@@ -20,8 +20,11 @@ Variáveis necessárias no Airflow (Admin > Variables):
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 import logging
+import subprocess
+import json
 
 # Configurações padrão da DAG
 default_args = {
@@ -56,10 +59,29 @@ def get_dbt_env_vars():
         raise
 
 
+def get_dbt_models_with_tag(tag: str):
+    """
+    Lista os modelos dbt que possuem uma tag específica usando dbt ls.
+    Retorna uma lista de nomes de modelos.
+    """
+    try:
+        cmd = f"cd {DBT_PROJECT_DIR} && dbt ls --select tag:{tag} --profiles-dir {DBT_PROFILES_DIR} --target prod --output name"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
+        models = [line.strip() for line in result.stdout.strip().split('\n') if line.strip()]
+        logging.info(f"Modelos encontrados com tag '{tag}': {models}")
+        return models
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Erro ao listar modelos dbt: {e.stderr}")
+        return []
+    except Exception as e:
+        logging.error(f"Erro inesperado ao listar modelos: {e}")
+        return []
+
+
 with DAG(
     dag_id='dbt_run_staging',
     default_args=default_args,
-    description='Executa modelos dbt com tag "stg" (staging layer)',
+    description='Executa modelos dbt com tag "stg" (staging layer) - um modelo por task',
     schedule='*/5 * * * *',  # A cada 5 minutos
     start_date=datetime(2025, 1, 1),
     catchup=False,
@@ -67,30 +89,42 @@ with DAG(
     max_active_runs=1,  # Apenas uma execução por vez
 ) as dag:
 
-    # Task: Executar modelos staging
-    run_staging_models = BashOperator(
-        task_id='run_staging_models',
-        bash_command=f'''
-            set -x  # Ativar modo debug (mostra comandos executados)
-            echo "========================================="
-            echo "Iniciando execução dos modelos STAGING"
-            echo "========================================="
-            echo "Diretório: {DBT_PROJECT_DIR}"
-            echo "Perfil: {DBT_PROFILES_DIR}"
-            echo "Target: prod"
-            echo "Tag: stg"
-            echo "========================================="
-
-            cd {DBT_PROJECT_DIR}
-
-            # Executar modelos com tag "stg"
-            dbt run --select tag:stg --profiles-dir {DBT_PROFILES_DIR} --target prod --debug
-
-            echo "========================================="
-            echo "Execução dos modelos STAGING concluída"
-            echo "========================================="
-        ''',
-        env=get_dbt_env_vars(),
+    # Task: Listar modelos staging
+    list_models = PythonOperator(
+        task_id='list_staging_models',
+        python_callable=get_dbt_models_with_tag,
+        op_kwargs={'tag': 'stg'},
     )
 
-    run_staging_models
+    # Task dinâmica: Executar cada modelo staging individualmente
+    run_individual_model = BashOperator.partial(
+        task_id='run_model',
+        bash_command="""
+            echo "========================================="
+            echo "Executando modelo: {{ params.model_name }}"
+            echo "Diretório: """ + DBT_PROJECT_DIR + """"
+            echo "Target: prod"
+            echo "========================================="
+
+            cd """ + DBT_PROJECT_DIR + """
+
+            dbt run --select {{ params.model_name }} --profiles-dir """ + DBT_PROFILES_DIR + """ --target prod
+
+            EXIT_CODE=$?
+
+            if [ $EXIT_CODE -eq 0 ]; then
+                echo "✓ Modelo {{ params.model_name }} executado com sucesso"
+            else
+                echo "✗ Erro ao executar modelo {{ params.model_name }}"
+                exit $EXIT_CODE
+            fi
+
+            echo "========================================="
+        """,
+        env=get_dbt_env_vars(),
+    ).expand(
+        params=[{"model_name": model} for model in get_dbt_models_with_tag('stg')]
+    )
+
+    # Dependências
+    list_models >> run_individual_model
