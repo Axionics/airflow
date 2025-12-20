@@ -60,7 +60,7 @@ with DAG(
     dag_id='dbt_run_staging',
     default_args=default_args,
     description='Executa modelos dbt com tag "stg" (staging layer)',
-    schedule_interval='*/5 * * * *',  # A cada 5 minutos
+    schedule='*/5 * * * *',  # A cada 5 minutos
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['dbt', 'staging', 'stg'],
