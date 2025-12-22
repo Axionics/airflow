@@ -87,7 +87,14 @@ with DAG(
                 env=env
             )
 
-            models = [line.strip() for line in result.stdout.strip().split('\n') if line.strip()]
+            # Filtrar apenas linhas que são nomes de modelos (sem timestamps, warnings, etc)
+            models = []
+            for line in result.stdout.strip().split('\n'):
+                line = line.strip()
+                # Ignorar linhas vazias, linhas com timestamps, warnings, cores ANSI
+                if line and not line.startswith('[') and not line.startswith('Running') and not line.startswith('Registered') and not '[0m' in line:
+                    models.append(line)
+
             logging.info(f"Modelos encontrados com tag 'stg': {models}")
 
             # Retornar lista de dicts para o expand()
