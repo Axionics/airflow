@@ -94,7 +94,11 @@ with DAG(
             return [{"model_name": model, "env_vars": env_vars} for model in models]
 
         except subprocess.CalledProcessError as e:
-            logging.error(f"Erro ao listar modelos dbt: {e.stderr}")
+            logging.error(f"=== ERRO AO LISTAR MODELOS DBT ===")
+            logging.error(f"Exit code: {e.returncode}")
+            logging.error(f"Command: {e.cmd}")
+            logging.error(f"STDOUT:\n{e.stdout}")
+            logging.error(f"STDERR:\n{e.stderr}")
             raise
         except Exception as e:
             logging.error(f"Erro inesperado ao listar modelos: {e}")
