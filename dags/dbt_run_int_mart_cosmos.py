@@ -85,6 +85,7 @@ def dbt_int_mart_dag():
         render_config=RenderConfig(
             select=['tag:int'],
             test_behavior=TestBehavior.NONE,
+            dbt_deps=False,
         ),
         operator_args={
             'install_deps': False,
@@ -104,6 +105,7 @@ def dbt_int_mart_dag():
         render_config=RenderConfig(
             select=['tag:mart'],
             test_behavior=TestBehavior.NONE,
+            dbt_deps=False,
         ),
         operator_args={
             'install_deps': False,
