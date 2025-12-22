@@ -110,68 +110,60 @@ with DAG(
     # Task 2: Listar modelos intermediate
     int_models_list = list_models_by_tag(env_vars, tag='int')
 
+    @task
+    def run_dbt_model(model_name: str, env_vars: dict, layer: str):
+        """
+        Executa um modelo dbt específico.
+        """
+        import subprocess
+        import logging
+
+        # Exportar variáveis de ambiente
+        env = os.environ.copy()
+        env.update(env_vars)
+
+        logging.info(f"========================================")
+        logging.info(f"Executando modelo {layer.upper()}: {model_name}")
+        logging.info(f"Diretório: {DBT_PROJECT_DIR}")
+        logging.info(f"Target: prod")
+        logging.info(f"========================================")
+
+        try:
+            cmd = f"cd {DBT_PROJECT_DIR} && dbt run --select {model_name} --profiles-dir {DBT_PROFILES_DIR} --target prod --debug"
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                check=True,
+                env=env
+            )
+
+            logging.info(result.stdout)
+            logging.info(f"✓ Modelo {model_name} executado com sucesso")
+            return {"model": model_name, "layer": layer, "status": "success"}
+
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Erro ao executar modelo {model_name}: {e.stderr}")
+            logging.error(e.stdout)
+            raise
+
     # Task 3: Executar modelos intermediate
-    run_int_model = BashOperator.partial(
-        task_id='run_intermediate_model',
-        bash_command=f"""
-            echo "========================================="
-            echo "Executando modelo INTERMEDIATE: {{{{ params.model_name }}}}"
-            echo "Diretório: {DBT_PROJECT_DIR}"
-            echo "Target: prod"
-            echo "========================================="
+    # Adicionar 'layer' aos dicts para identificar o tipo
+    @task
+    def add_layer_to_models(models: list, layer: str):
+        """Adiciona o campo 'layer' aos modelos."""
+        return [{"model_name": m["model_name"], "env_vars": m["env_vars"], "layer": layer} for m in models]
 
-            cd {DBT_PROJECT_DIR}
-
-            dbt run --select {{{{ params.model_name }}}} \\
-                --profiles-dir {DBT_PROFILES_DIR} \\
-                --target prod \\
-                --debug
-
-            EXIT_CODE=$?
-
-            if [ $EXIT_CODE -eq 0 ]; then
-                echo "✓ Modelo {{{{ params.model_name }}}} executado com sucesso"
-            else
-                echo "✗ Erro ao executar modelo {{{{ params.model_name }}}}"
-                exit $EXIT_CODE
-            fi
-
-            echo "========================================="
-        """,
-    ).expand_kwargs(int_models_list)
+    int_models_with_layer = add_layer_to_models(int_models_list, layer='intermediate')
+    run_int_model = run_dbt_model.expand_kwargs(int_models_with_layer)
 
     # Task 4: Listar modelos mart
     mart_models_list = list_models_by_tag(env_vars, tag='mart')
 
     # Task 5: Executar modelos mart
-    run_mart_model = BashOperator.partial(
-        task_id='run_mart_model',
-        bash_command=f"""
-            echo "========================================="
-            echo "Executando modelo MART: {{{{ params.model_name }}}}"
-            echo "Diretório: {DBT_PROJECT_DIR}"
-            echo "Target: prod"
-            echo "========================================="
-
-            cd {DBT_PROJECT_DIR}
-
-            dbt run --select {{{{ params.model_name }}}} \\
-                --profiles-dir {DBT_PROFILES_DIR} \\
-                --target prod \\
-                --debug
-
-            EXIT_CODE=$?
-
-            if [ $EXIT_CODE -eq 0 ]; then
-                echo "✓ Modelo {{{{ params.model_name }}}} executado com sucesso"
-            else
-                echo "✗ Erro ao executar modelo {{{{ params.model_name }}}}"
-                exit $EXIT_CODE
-            fi
-
-            echo "========================================="
-        """,
-    ).expand_kwargs(mart_models_list)
+    mart_models_with_layer = add_layer_to_models(mart_models_list, layer='mart')
+    run_mart_model = run_dbt_model.expand_kwargs(mart_models_with_layer)
 
     # Definir ordem de execução: env_vars -> int -> mart
-    env_vars >> int_models_list >> run_int_model >> mart_models_list >> run_mart_model
+    env_vars >> int_models_list >> int_models_with_layer >> run_int_model >> mart_models_list >> mart_models_with_layer >> run_mart_model

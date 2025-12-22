@@ -106,35 +106,46 @@ with DAG(
     # Task 2: Listar modelos staging
     models_list = list_staging_models(env_vars)
 
+    @task
+    def run_staging_model(model_name: str, env_vars: dict):
+        """
+        Executa um modelo dbt específico.
+        """
+        import subprocess
+        import logging
+
+        # Exportar variáveis de ambiente
+        env = os.environ.copy()
+        env.update(env_vars)
+
+        logging.info(f"========================================")
+        logging.info(f"Executando modelo STAGING: {model_name}")
+        logging.info(f"Diretório: {DBT_PROJECT_DIR}")
+        logging.info(f"Target: prod")
+        logging.info(f"========================================")
+
+        try:
+            cmd = f"cd {DBT_PROJECT_DIR} && dbt run --select {model_name} --profiles-dir {DBT_PROFILES_DIR} --target prod --debug"
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                check=True,
+                env=env
+            )
+
+            logging.info(result.stdout)
+            logging.info(f"✓ Modelo {model_name} executado com sucesso")
+            return {"model": model_name, "status": "success"}
+
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Erro ao executar modelo {model_name}: {e.stderr}")
+            logging.error(e.stdout)
+            raise
+
     # Task 3: Executar cada modelo individualmente (dynamic task mapping)
-    run_model = BashOperator.partial(
-        task_id='run_staging_model',
-        bash_command=f"""
-            echo "========================================="
-            echo "Executando modelo STAGING: {{{{ params.model_name }}}}"
-            echo "Diretório: {DBT_PROJECT_DIR}"
-            echo "Target: prod"
-            echo "========================================="
-
-            cd {DBT_PROJECT_DIR}
-
-            dbt run --select {{{{ params.model_name }}}} \\
-                --profiles-dir {DBT_PROFILES_DIR} \\
-                --target prod \\
-                --debug
-
-            EXIT_CODE=$?
-
-            if [ $EXIT_CODE -eq 0 ]; then
-                echo "✓ Modelo {{{{ params.model_name }}}} executado com sucesso"
-            else
-                echo "✗ Erro ao executar modelo {{{{ params.model_name }}}}"
-                exit $EXIT_CODE
-            fi
-
-            echo "========================================="
-        """,
-    ).expand_kwargs(models_list)
+    run_model = run_staging_model.expand_kwargs(models_list)
 
     # Definir ordem de execução
     env_vars >> models_list >> run_model
