@@ -20,11 +20,9 @@ Variáveis necessárias no Airflow (Admin > Variables):
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from airflow.operators.python import PythonOperator
+from airflow.decorators import task
 from airflow.models import Variable
-import logging
-import subprocess
-import json
+import os
 
 # Configurações padrão da DAG
 default_args = {
@@ -32,7 +30,7 @@ default_args = {
     'depends_on_past': False,
     'email_on_failure': False,
     'email_on_retry': False,
-    'retries': 0,  # Não tenta novamente em caso de falha
+    'retries': 0,
     'retry_delay': timedelta(minutes=1),
 }
 
@@ -40,91 +38,103 @@ default_args = {
 DBT_PROJECT_DIR = '/opt/dbt'
 DBT_PROFILES_DIR = '/opt/dbt/profiles'
 
-def get_dbt_env_vars():
-    """
-    Retorna as variáveis de ambiente do dbt a partir das Airflow Variables.
-    """
-    try:
-        env_vars = {
+
+with DAG(
+    dag_id='dbt_run_staging',
+    default_args=default_args,
+    description='Executa modelos dbt com tag "stg" (staging layer)',
+    schedule='*/5 * * * *',
+    start_date=datetime(2025, 1, 1),
+    catchup=False,
+    tags=['dbt', 'staging', 'stg'],
+    max_active_runs=1,
+) as dag:
+
+    @task
+    def get_dbt_env_vars():
+        """
+        Retorna as variáveis de ambiente do dbt como dict.
+        """
+        return {
             'DB_HOST_PROD': Variable.get('dbt_db_host_prod'),
             'DB_PORT_PROD': Variable.get('dbt_db_port_prod', default_var='5432'),
             'DBT_DB_NAME_PROD': Variable.get('dbt_db_name_prod'),
             'DBT_DB_USER_PROD': Variable.get('dbt_db_user_prod'),
             'DBT_DB_PASSWORD_PROD': Variable.get('dbt_db_password_prod'),
         }
-        logging.info(f"Variáveis de ambiente carregadas: {list(env_vars.keys())}")
-        return env_vars
-    except Exception as e:
-        logging.error(f"Erro ao carregar variáveis do Airflow: {e}")
-        raise
 
+    @task
+    def list_staging_models(env_vars: dict):
+        """
+        Lista os modelos dbt que possuem a tag 'stg'.
+        Retorna uma lista de dicts para dynamic task mapping.
+        """
+        import subprocess
+        import logging
 
-def get_dbt_models_with_tag(tag: str):
-    """
-    Lista os modelos dbt que possuem uma tag específica usando dbt ls.
-    Retorna uma lista de nomes de modelos.
-    """
-    try:
-        cmd = f"cd {DBT_PROJECT_DIR} && dbt ls --select tag:{tag} --profiles-dir {DBT_PROFILES_DIR} --target prod --output name"
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
-        models = [line.strip() for line in result.stdout.strip().split('\n') if line.strip()]
-        logging.info(f"Modelos encontrados com tag '{tag}': {models}")
-        return models
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Erro ao listar modelos dbt: {e.stderr}")
-        return []
-    except Exception as e:
-        logging.error(f"Erro inesperado ao listar modelos: {e}")
-        return []
+        # Exportar variáveis de ambiente
+        env = os.environ.copy()
+        env.update(env_vars)
 
+        try:
+            cmd = f"cd {DBT_PROJECT_DIR} && dbt ls --select tag:stg --profiles-dir {DBT_PROFILES_DIR} --target prod --output name"
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                check=True,
+                env=env
+            )
 
-with DAG(
-    dag_id='dbt_run_staging',
-    default_args=default_args,
-    description='Executa modelos dbt com tag "stg" (staging layer) - um modelo por task',
-    schedule='*/5 * * * *',  # A cada 5 minutos
-    start_date=datetime(2025, 1, 1),
-    catchup=False,
-    tags=['dbt', 'staging', 'stg'],
-    max_active_runs=1,  # Apenas uma execução por vez
-) as dag:
+            models = [line.strip() for line in result.stdout.strip().split('\n') if line.strip()]
+            logging.info(f"Modelos encontrados com tag 'stg': {models}")
 
-    # Task: Listar modelos staging
-    list_models = PythonOperator(
-        task_id='list_staging_models',
-        python_callable=get_dbt_models_with_tag,
-        op_kwargs={'tag': 'stg'},
-    )
+            # Retornar lista de dicts para o expand()
+            return [{"model_name": model, "env_vars": env_vars} for model in models]
 
-    # Task dinâmica: Executar cada modelo staging individualmente
-    run_individual_model = BashOperator.partial(
-        task_id='run_model',
-        bash_command="""
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Erro ao listar modelos dbt: {e.stderr}")
+            raise
+        except Exception as e:
+            logging.error(f"Erro inesperado ao listar modelos: {e}")
+            raise
+
+    # Task 1: Pegar variáveis de ambiente
+    env_vars = get_dbt_env_vars()
+
+    # Task 2: Listar modelos staging
+    models_list = list_staging_models(env_vars)
+
+    # Task 3: Executar cada modelo individualmente (dynamic task mapping)
+    run_model = BashOperator.partial(
+        task_id='run_staging_model',
+        bash_command=f"""
             echo "========================================="
-            echo "Executando modelo: {{ params.model_name }}"
-            echo "Diretório: """ + DBT_PROJECT_DIR + """"
+            echo "Executando modelo STAGING: {{{{ params.model_name }}}}"
+            echo "Diretório: {DBT_PROJECT_DIR}"
             echo "Target: prod"
             echo "========================================="
 
-            cd """ + DBT_PROJECT_DIR + """
+            cd {DBT_PROJECT_DIR}
 
-            dbt run --select {{ params.model_name }} --profiles-dir """ + DBT_PROFILES_DIR + """ --target prod
+            dbt run --select {{{{ params.model_name }}}} \\
+                --profiles-dir {DBT_PROFILES_DIR} \\
+                --target prod \\
+                --debug
 
             EXIT_CODE=$?
 
             if [ $EXIT_CODE -eq 0 ]; then
-                echo "✓ Modelo {{ params.model_name }} executado com sucesso"
+                echo "✓ Modelo {{{{ params.model_name }}}} executado com sucesso"
             else
-                echo "✗ Erro ao executar modelo {{ params.model_name }}"
+                echo "✗ Erro ao executar modelo {{{{ params.model_name }}}}"
                 exit $EXIT_CODE
             fi
 
             echo "========================================="
         """,
-        env=get_dbt_env_vars(),
-    ).expand(
-        params=[{"model_name": model} for model in get_dbt_models_with_tag('stg')]
-    )
+    ).expand_kwargs(models_list)
 
-    # Dependências
-    list_models >> run_individual_model
+    # Definir ordem de execução
+    env_vars >> models_list >> run_model
