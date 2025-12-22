@@ -65,9 +65,9 @@ def dbt_staging_dag():
         profile_name='Axionics_dbt',
         target_name='prod',
         profile_mapping=PostgresUserPasswordProfileMapping(
-            conn_id='postgres_prod',  # Vamos criar essa connection
+            conn_id='postgres_prod',
             profile_args={
-                'schema': 'public',
+                'schema': 'dbt',  # Schema onde os modelos dbt serão criados
             },
         ),
     )
