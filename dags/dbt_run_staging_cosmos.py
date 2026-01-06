@@ -90,7 +90,6 @@ def dbt_staging_dag():
         ),
         operator_args={
             'install_deps': False,  # Não instalar dependências a cada run
-            'full_refresh': True,
         },
     )
 
