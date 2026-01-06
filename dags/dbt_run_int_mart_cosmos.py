@@ -2,7 +2,7 @@
 DAG para execução dos modelos INTERMEDIATE e MART (tags: int, mart) usando Cosmos.
 
 Esta DAG usa Cosmos para criar automaticamente uma task para cada modelo dbt,
-com dependências automáticas entre as camadas intermediate e marts.
+com dependências automáticas entre as camadas intermediate e marts
 
 Configurações:
 - Frequência: A cada 5 minutos
@@ -88,8 +88,7 @@ def dbt_int_mart_dag():
             dbt_deps=False,
         ),
         operator_args={
-            'install_deps': False,
-            
+            'install_deps': False,    
         },
     )
 

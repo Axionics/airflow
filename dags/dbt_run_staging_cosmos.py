@@ -58,7 +58,7 @@ DBT_EXECUTABLE_PATH = '/home/airflow/.local/bin/dbt'
 def dbt_staging_dag():
     """
     DAG que executa modelos dbt de staging usando Cosmos.
-    Cada modelo dbt aparece como uma task individual no Airflow.
+    Cada modelo dbt aparece como uma task individual no Airflow
     """
 
     # Profile config - credenciais do banco de dados
