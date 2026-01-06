@@ -89,7 +89,7 @@ def dbt_int_mart_dag():
         ),
         operator_args={
             'install_deps': False,
-            'full_refresh': True,
+            
         },
     )
 
@@ -110,7 +110,7 @@ def dbt_int_mart_dag():
         ),
         operator_args={
             'install_deps': False,
-            'full_refresh': True,
+            
         },
     )
 
