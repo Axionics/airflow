@@ -246,6 +246,13 @@ services:
         echo
         mkdir -v -p /opt/airflow/{logs,dags,plugins,config}
         echo
+        echo "Installing dbt dependencies in /opt/dbt..."
+        if [ -d "/opt/dbt" ]; then
+            # Tenta rodar dbt deps usando o dbt instalado na imagem
+            # O '|| true' impede que o init falhe se o dbt não estiver no path ou der erro de rede
+            cd /opt/dbt && dbt deps || echo "WARNING: Failed to run dbt deps. Cosmos may retry later."
+        fi
+        echo
         echo "Airflow version:"
         /entrypoint airflow version
         echo

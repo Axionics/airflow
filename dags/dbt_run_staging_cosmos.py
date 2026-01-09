@@ -86,7 +86,7 @@ def dbt_staging_dag():
         render_config=RenderConfig(
             select=['tag:stg'],  # Seleciona apenas modelos com tag 'stg'
             test_behavior=TestBehavior.NONE,  # Não rodar testes automaticamente
-            dbt_deps=False,  # Não rodar dbt deps (já instalamos manualmente)
+            dbt_deps=True,  # Rodar dbt deps para garantir dependências
         ),
         operator_args={
             'install_deps': False,  # Não instalar dependências a cada run
