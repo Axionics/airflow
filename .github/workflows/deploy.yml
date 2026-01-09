@@ -37,8 +37,14 @@ jobs:
 
             echo "Atualizando o projeto..."
             cd ${{ secrets.VPS_TARGET_PATH }}
-            echo "Executando git pull na pasta $(pwd)..."
-            git pull origin main
+
+            echo "Forçando sincronização com a origem (sobrescrevendo mudanças locais)..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "Corrigindo permissões..."
+            sudo chown -R 1001:1001 .
+            chmod +x dags/*.py
 
             echo "Encerrando o agente e removendo arquivos temporários..."
             ssh-agent -k
