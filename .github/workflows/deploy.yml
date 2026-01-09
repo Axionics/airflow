@@ -42,10 +42,6 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            echo "Corrigindo permissões..."
-            sudo chown -R 1001:1001 .
-            chmod +x dags/*.py
-
             echo "Encerrando o agente e removendo arquivos temporários..."
             ssh-agent -k
             rm ~/.ssh_askpass_temp
