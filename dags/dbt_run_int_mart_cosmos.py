@@ -84,6 +84,7 @@ def dbt_int_mart_dag():
         ),
         render_config=RenderConfig(
             select=['tag:int'],
+            exclude=['config.materialized:view'],  # Views não precisam ser recriadas a cada run
             test_behavior=TestBehavior.NONE,
             dbt_deps=False,
         ),

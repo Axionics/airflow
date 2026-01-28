@@ -85,6 +85,7 @@ def dbt_staging_dag():
         ),
         render_config=RenderConfig(
             select=['tag:stg'],  # Seleciona apenas modelos com tag 'stg'
+            exclude=['config.materialized:view'],  # Views não precisam ser recriadas a cada run
             test_behavior=TestBehavior.NONE,  # Não rodar testes automaticamente
             dbt_deps=False,  # Rodar dbt deps para garantir dependências
         ),
