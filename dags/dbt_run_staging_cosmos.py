@@ -31,7 +31,7 @@ from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, ExecutionConfig, 
 from cosmos.profiles import PostgresUserPasswordProfileMapping
 from cosmos.constants import TestBehavior
 
-from discord_alerts import notify_discord_on_failure
+from plugins.discord_alerts import notify_discord_on_failure
 
 # Configurações padrão
 default_args = {
