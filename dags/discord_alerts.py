@@ -16,6 +16,7 @@ Requer a Airflow Variable 'discord_webhook_url' configurada em Admin > Variables
 
 import json
 import logging
+from datetime import timedelta
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
@@ -29,7 +30,11 @@ def notify_discord_on_failure(context):
     dag_id = context.get('dag').dag_id
     task_id = context.get('task_instance').task_id
     exec_date = context.get('logical_date') or context.get('execution_date')
-    execution_date = exec_date.strftime('%Y-%m-%d %H:%M:%S') if exec_date else 'N/A'
+    if exec_date:
+        exec_date_local = exec_date - timedelta(hours=3)
+        execution_date = exec_date_local.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        execution_date = 'N/A'
 
     webhook_url = Variable.get('discord_webhook_url').strip()
 
