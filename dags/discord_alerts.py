@@ -31,7 +31,7 @@ def notify_discord_on_failure(context):
     exec_date = context.get('logical_date') or context.get('execution_date')
     execution_date = exec_date.strftime('%Y-%m-%d %H:%M:%S') if exec_date else 'N/A'
 
-    webhook_url = Variable.get('discord_webhook_url')
+    webhook_url = Variable.get('discord_webhook_url').strip()
 
     message = {
         "content": (
@@ -45,12 +45,17 @@ def notify_discord_on_failure(context):
     req = Request(
         webhook_url,
         data=json.dumps(message).encode('utf-8'),
-        headers={'Content-Type': 'application/json'},
+        headers={
+            'Content-Type': 'application/json',
+            'User-Agent': 'Airflow-Discord-Alert/1.0',
+        },
         method='POST',
     )
 
     try:
+        logger.info("Enviando alerta Discord para URL: %s...", webhook_url[:50])
         urlopen(req)
         logger.info("Alerta Discord enviado para DAG %s", dag_id)
     except URLError as e:
         logger.error("Falha ao enviar alerta Discord: %s", e)
+        logger.error("URL usada: %s", webhook_url)
