@@ -30,6 +30,8 @@ from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, ExecutionConfig, 
 from cosmos.profiles import PostgresUserPasswordProfileMapping
 from cosmos.constants import TestBehavior
 
+from discord_alerts import notify_discord_on_failure
+
 # Configurações padrão
 default_args = {
     'owner': 'axionics',
@@ -54,6 +56,7 @@ DBT_EXECUTABLE_PATH = '/home/airflow/.local/bin/dbt'
     catchup=False,
     tags=['dbt', 'staging', 'stg', 'cosmos'],
     max_active_runs=1,
+    on_failure_callback=notify_discord_on_failure,
 )
 def dbt_staging_dag():
     """
