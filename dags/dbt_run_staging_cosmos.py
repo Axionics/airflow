@@ -24,13 +24,14 @@ import os
 
 from airflow.decorators import dag
 from airflow.models import Variable
+from airflow.operators.bash import BashOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, ExecutionConfig, RenderConfig
 from cosmos.profiles import PostgresUserPasswordProfileMapping
 from cosmos.constants import TestBehavior
 
-from discord_alerts import notify_discord_on_failure
+from plugins.discord_alerts import notify_discord_on_failure
 
 # Configurações padrão
 default_args = {
@@ -76,6 +77,12 @@ def dbt_staging_dag():
         ),
     )
 
+    # TODO: REMOVER - Task temporária para testar alerta Discord
+    force_fail = BashOperator(
+        task_id='force_fail_test',
+        bash_command='echo "Forçando erro para testar alerta Discord" && exit 1',
+    )
+
     # Cosmos DbtTaskGroup - cria automaticamente uma task por modelo
     dbt_staging_tg = DbtTaskGroup(
         group_id='dbt_staging_models',
@@ -104,8 +111,8 @@ def dbt_staging_dag():
         wait_for_completion=False,
     )
 
-    # Definir ordem: staging models -> trigger int_mart
-    dbt_staging_tg >> trigger_int_mart
+    # Definir ordem: force_fail -> staging models -> trigger int_mart
+    force_fail >> dbt_staging_tg >> trigger_int_mart
 
 
 # Instanciar a DAG
