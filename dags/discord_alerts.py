@@ -28,7 +28,8 @@ def notify_discord_on_failure(context):
     """Envia alerta ao Discord quando uma DAG falha."""
     dag_id = context.get('dag').dag_id
     task_id = context.get('task_instance').task_id
-    execution_date = context.get('execution_date').strftime('%Y-%m-%d %H:%M:%S')
+    exec_date = context.get('logical_date') or context.get('execution_date')
+    execution_date = exec_date.strftime('%Y-%m-%d %H:%M:%S') if exec_date else 'N/A'
 
     webhook_url = Variable.get('discord_webhook_url')
 
