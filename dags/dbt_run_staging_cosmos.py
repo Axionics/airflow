@@ -21,6 +21,9 @@ Variáveis necessárias no Airflow (Admin > Variables):
 from datetime import datetime, timedelta
 from pathlib import Path
 import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 
 from airflow.decorators import dag
 from airflow.models import Variable
@@ -31,7 +34,7 @@ from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, ExecutionConfig, 
 from cosmos.profiles import PostgresUserPasswordProfileMapping
 from cosmos.constants import TestBehavior
 
-from plugins.discord_alerts import notify_discord_on_failure
+from discord_alerts import notify_discord_on_failure
 
 # Configurações padrão
 default_args = {
