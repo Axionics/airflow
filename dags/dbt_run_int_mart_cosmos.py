@@ -39,6 +39,7 @@ default_args = {
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': timedelta(minutes=1),
+    'on_failure_callback': notify_discord_on_failure,
 }
 
 # Diretórios
