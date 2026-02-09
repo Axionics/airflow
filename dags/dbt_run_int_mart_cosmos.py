@@ -90,7 +90,7 @@ def dbt_int_mart_dag():
             select=['tag:int'],
             exclude=['config.materialized:view'],  # Views não precisam ser recriadas a cada run
             test_behavior=TestBehavior.NONE,
-            dbt_deps=False,
+            dbt_deps=True,
         ),
         operator_args={
             'install_deps': False,    
@@ -110,7 +110,7 @@ def dbt_int_mart_dag():
         render_config=RenderConfig(
             select=['tag:mart'],
             test_behavior=TestBehavior.NONE,
-            dbt_deps=False,
+            dbt_deps=True,
         ),
         operator_args={
             'install_deps': False,
