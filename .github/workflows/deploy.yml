@@ -14,7 +14,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, linux, x64, airflow]
+    runs-on: [self-hosted, linux, arm64, airflow]
 
     steps:
       - name: Pull latest code
